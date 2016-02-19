@@ -2,6 +2,8 @@ from os import listdir
 from os.path import isfile, join
 from xml.dom.minidom import parse
 from skimage import color
+from scipy import ndimage
+from scipy import signal
 from scipy import stats
 import matplotlib
 matplotlib.use('Agg')
@@ -12,6 +14,13 @@ import re
 import gdal
 import numpy
 import os.path
+
+FMASK_LAND = 0
+FMASK_WATER = 1
+FMASK_SNOW = 3
+FMASK_OUTSIDE = 255
+FMASK_CLOUD_SHADOW = 2
+FMASK_CLOUD = 4
 
 def main(directory):
     '''
@@ -82,8 +91,7 @@ def main(directory):
     clouds = base_masking_rapideye(top_of_atmosphere_data, base, solar_zenith, solar_azimuth, geotransform)
 
     clouds_image = driver.Create(toa_output_file, width, height, bands, gdal.GDT_Int16)
-    for band in range(clouds.shape[0]):
-        clouds_image.GetRasterBand(band + 1).WriteArray(top_of_atmosphere_data[band])
+    clouds_image.GetRasterBand(1).WriteArray(top_of_atmosphere_data)
     clouds_image.FlushCache()
 
     print 'Done'
@@ -211,7 +219,7 @@ def extract_extremes(data, basename, make_plot, steps=1000):
     subset_result = numpy.zeros((3, y, x), dtype=numpy.float)
     total_q = len(global_quant)
     for counter, item in enumerate(global_quant):
-        LOGGER.info("%d: %d, %s" % ( counter, total_q, str(item)))
+        print "%d: %d, %s" % ( counter, total_q, str(item))
         q, value, diff = item
         MAX_ERROR = 10
         if diff > MAX_ERROR:
@@ -332,6 +340,22 @@ def calculate_continuity(point_list):
             breaks.append(point_list[i - 1])
             breaks.append(point_list[i])    
     return breaks
+def calculate_water(data):
+    z,y,x = data.shape
+    pot_water = numpy.zeros((y,x))
+    for b in range(z-1,1,-1):
+        pot_water[:,:] = numpy.where(data[b,:,:]<data[b-1,:,:],pot_water+b*1,pot_water)
+    for b in range(z-1,1,-1):
+        pot_water[:,:] = numpy.where(data[b,:,:]>data[b-1,:,:],pot_water-b*1,pot_water)
+    # NDWI bands
+    b=4
+    pot_water[:,:] = numpy.where(data[b,:,:]>data[b-3,:,:],pot_water-1,pot_water) 
+    #NIR-RE diff to  R-RE aka sun glid
+    dark_nir = numpy.where(data[b,:,:]<0.12,data, data*0 )
+    pot_water[:,:] = numpy.where(numpy.abs(dark_nir[b,:,:]-dark_nir[b-1,:,:]) < abs(dark_nir[b-1,:,:]-dark_nir[b-2,:,:]),pot_water+1.5,pot_water-1.5) 
+    pot_water = signal.medfilt2d(pot_water,kernel_size=5)
+    pot_water = numpy.where(data[0,:,:]==0, -999, pot_water)
+    return pot_water
 if __name__ == '__main__':
   directory = sys.argv[1]
   main(directory)
