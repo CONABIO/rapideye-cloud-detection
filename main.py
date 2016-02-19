@@ -15,6 +15,7 @@ import gdal
 import numpy
 import os.path
 import osr
+import cloud.util as util
 
 FMASK_LAND = 0
 FMASK_WATER = 1
@@ -27,30 +28,26 @@ def main(directory):
     '''
     Main method.
     '''
-    r1 = re.compile(".*[0-9]{6}.tif$")
-    r2 = re.compile(".*[0-9]{6}_metadata.xml$")
+    tif_file_regex = re.compile(".*[0-9]{6}.tif$")
+    metadata_file_regex = re.compile(".*[0-9]{6}_metadata.xml$")
     
     for f in listdir(directory):
       if isfile(join(directory, f)): 
-      	if r2.match(f):
+      	if metadata_file_regex.match(f):
         	metadata = join(directory, f)
-        if r1.match(f):
+        if tif_file_regex.match(f):
         	image_path = join(directory, f)
     
     metadata_xml = parse(metadata)
     
     print metadata_xml, metadata
 
-    solar_zenith_element =  metadata_xml.getElementsByTagName('opt:illuminationElevationAngle')
-    solar_zenith = float(get_text(solar_zenith_element[0].childNodes))
-  
+    solar_zenith = util.get_float_metadata(metadata_xml, 'opt:illuminationElevationAngle')
+    aquisition_date = datetime.datetime.strptime(util.get_metadata(metadata_xml, 'eop:acquisitionDate'), "%Y-%m-%dT%H:%M:%S.%fZ")
+    solar_azimuth =  util.get_float_metadata(metadata_xml, 'opt:illuminationAzimuthAngle')
 
-    aquisition_date_element =  metadata_xml.getElementsByTagName('eop:acquisitionDate')
-    aquisition_date = datetime.datetime.strptime(get_text(aquisition_date_element[0].childNodes), "%Y-%m-%dT%H:%M:%S.%fZ")
+
     sun_earth_distance = calculate_distance_sun_earth(aquisition_date)
-
-    solar_azimuth_element =  metadata_xml.getElementsByTagName('opt:illuminationAzimuthAngle')
-    solar_azimuth = float(get_text(solar_azimuth_element[0].childNodes))
 
 
     print sun_earth_distance
@@ -101,18 +98,14 @@ def main(directory):
     
 
 
-    clouds_image.SetProjection(projection)
+    
     clouds_image.GetRasterBand(1).WriteArray(clouds)
+    clouds_image.SetProjection(str(projection))
+    clouds_image.SetGeoTransform(geotransform)
     clouds_image.FlushCache()
 
     print 'Done'
 
-def get_text(nodelist):
-    rc = []
-    for node in nodelist:
-        if node.nodeType == node.TEXT_NODE:
-            rc.append(node.data)
-    return ''.join(rc)
 
 def calculate_distance_sun_earth(datestr):
     '''
