@@ -14,6 +14,7 @@ import re
 import gdal
 import numpy
 import os.path
+import osr
 
 FMASK_LAND = 0
 FMASK_WATER = 1
@@ -78,6 +79,10 @@ def main(directory):
     driver = gdal.GetDriverByName('GTiff')
     bands = ds.RasterCount
     geotransform = ds.GetGeoTransform()
+    projection = osr.SpatialReference()
+    projection.ImportFromWkt(ds.GetProjectionRef())
+    print projection
+
 
     print "Bands: %d" % bands
     toa_output_file = '%s_toa.tif' % base
@@ -90,8 +95,14 @@ def main(directory):
     cloud_output_file = '%s_cloud.tif' % base
     clouds = base_masking_rapideye(top_of_atmosphere_data, base, solar_zenith, solar_azimuth, geotransform)
 
-    clouds_image = driver.Create(toa_output_file, width, height, bands, gdal.GDT_Int16)
-    clouds_image.GetRasterBand(1).WriteArray(top_of_atmosphere_data)
+    print clouds.shape
+
+    clouds_image = driver.Create(cloud_output_file, width, height, bands, gdal.GDT_Int16)
+    
+
+
+    clouds_image.SetProjection(projection)
+    clouds_image.GetRasterBand(1).WriteArray(clouds)
     clouds_image.FlushCache()
 
     print 'Done'
