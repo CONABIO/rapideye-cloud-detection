@@ -17,8 +17,38 @@ Once we have the docker image built, we start the docker container attaching the
 
 ```
 docker run -it \
-       -v <path to rapideye directory>:<path to rapideye directory> \
+       -v <path to rapideye directory>:<path to rapideye directory inside docker> \
        -v $(pwd):/data \
        rapideye-cloud/v2 \
-       python main.py <path to rapideye directory>
+       python main.py <path to rapideye directory inside docker>
+```
+## Windows
+
+In Windows, Docker is only allowed to mount files that are found in the directory:
+
+```
+C:\\Users
+```
+So our working directory must be in that directory, for the sake of example, I created a directory called example:
+
+```
+C:\\Users\example
+```
+Recalling that the paths for Windows must be prepend by a "/" we have:
+
+```
+docker run -it \
+       -v /<path to rapideye directory>:<path to rapideye directory inside docker> \
+       -v /$(pwd):/data \
+       rapideye-cloud/v2 \
+       python main.py <path to rapideye directory inside docker>
+```
+For instance:
+
+```
+docker run -it \
+       -v /c/Users/example/l3a/:/rapideye/ \
+       -v /$(pwd):/data \
+       rapideye-cloud/v2 \
+       python main.py /rapideye/
 ```
