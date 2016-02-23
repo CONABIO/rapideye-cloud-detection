@@ -7,6 +7,6 @@ USER root
 # install python dependencies
 RUN apt-get update -y && \
 	apt-get install -y \
-	python-scipy 
+	python-skimage 
 RUN pip install ephem
 

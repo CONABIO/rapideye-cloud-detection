@@ -24,7 +24,6 @@ FMASK_OUTSIDE = 255
 FMASK_CLOUD_SHADOW = 2
 FMASK_CLOUD = 4
 
-
 def main(directory):
     '''
     Main method.
@@ -88,7 +87,7 @@ def calculate_distance_sun_earth(datestr):
     from metadata.
     '''
     import ephem
-    sun = ephem.Sun()  # @UndefinedVariable
+    sun = ephem.Sun()
     if isinstance(datestr, str):
         sun.compute(datetime.datetime.strptime(datestr, '%Y-%m-%d').date())
     elif isinstance(datestr, datetime.datetime ):
