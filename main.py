@@ -24,6 +24,7 @@ FMASK_OUTSIDE = 255
 FMASK_CLOUD_SHADOW = 2
 FMASK_CLOUD = 4
 
+
 def main(directory):
     '''
     Main method.
@@ -39,10 +40,8 @@ def main(directory):
         	image_path = join(directory, f)
     
     metadata_xml = parse(metadata)
-    
-    print metadata_xml, metadata
-
     solar_zenith = util.get_float_metadata(metadata_xml, 'opt:illuminationElevationAngle')
+    # We parse the aquisition date into a format that can be later used to calculate distance to the sun.
     aquisition_date = datetime.datetime.strptime(util.get_metadata(metadata_xml, 'eop:acquisitionDate'), "%Y-%m-%dT%H:%M:%S.%fZ")
     solar_azimuth =  util.get_float_metadata(metadata_xml, 'opt:illuminationAzimuthAngle')
 
@@ -55,56 +54,31 @@ def main(directory):
     print solar_zenith
     print solar_azimuth
 
+    image_dictionary = util.get_data_from_image(image_path)
+    original_info = image_dictionary['array']
 
-    ds = gdal.Open(image_path)
-    
-
-    array = numpy.array(ds.ReadAsArray())
-
-    # Here we obtain the radiance from the raw data array.
-    radiance = calculate_rad_rapideye(array)
+    # Obtain the radiance from the raw data array.
+    radiance = calculate_rad_rapideye(original_info)
     # With the radiance, we can calculate the top of atmosphere.
-    print 'solar zenith: %s' % solar_zenith
+    
     top_of_atmosphere_data = calculate_toa_rapideye(radiance, sun_earth_distance, solar_zenith)
 
-    print top_of_atmosphere_data.shape
 
-    # Create file routine
+    # Create file routine.
     base, ext = os.path.splitext(image_path)
-    width = ds.RasterXSize
-    height = ds.RasterYSize
-    driver = gdal.GetDriverByName('GTiff')
-    bands = ds.RasterCount
-    geotransform = ds.GetGeoTransform()
-    projection = osr.SpatialReference()
-    projection.ImportFromWkt(ds.GetProjectionRef())
-    print projection
 
-
-    print "Bands: %d" % bands
+    
+    # We write the top of atmosphere to a file.
     toa_output_file = '%s_toa.tif' % base
-    result_image = driver.Create(toa_output_file, width, height, bands, gdal.GDT_Int16)
-    for band in range(bands):
-        result_image.GetRasterBand(band + 1).WriteArray(top_of_atmosphere_data[band])
-    result_image.FlushCache()
-    print result_image
+    util.write_array_to_tiff(top_of_atmosphere_data, toa_output_file, top_of_atmosphere_data.shape[0], image_dictionary)
 
+
+    # We calculate the cloud mask, and write it to a file.
     cloud_output_file = '%s_cloud.tif' % base
-    clouds = base_masking_rapideye(top_of_atmosphere_data, base, solar_zenith, solar_azimuth, geotransform)
-
-    print clouds.shape
-
-    clouds_image = driver.Create(cloud_output_file, width, height, bands, gdal.GDT_Int16)
-    
+    clouds = base_masking_rapideye(top_of_atmosphere_data, base, solar_zenith, solar_azimuth, image_dictionary['geotransform'])
+    util.write_array_to_tiff(clouds, cloud_output_file, 1, image_dictionary)
 
 
-    
-    clouds_image.GetRasterBand(1).WriteArray(clouds)
-    clouds_image.SetProjection(str(projection))
-    clouds_image.SetGeoTransform(geotransform)
-    clouds_image.FlushCache()
-
-    print 'Done'
 
 
 def calculate_distance_sun_earth(datestr):
