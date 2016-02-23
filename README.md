@@ -19,7 +19,7 @@ Once we have the docker image built, we start the docker container attaching the
 docker run -it \
        -v <path to rapideye directory>:<path to rapideye directory inside docker> \
        -v $(pwd):/data \
-       rapideye-cloud/v2 \
+       rapideye-clouds \
        python main.py <path to rapideye directory inside docker>
 ```
 ## Windows
@@ -40,7 +40,7 @@ Recalling that the paths for Windows must be prepend by a "/" we have:
 docker run -it \
        -v /<path to rapideye directory>:<path to rapideye directory inside docker> \
        -v /$(pwd):/data \
-       rapideye-cloud/v2 \
+       rapideye-clouds \
        python main.py <path to rapideye directory inside docker>
 ```
 For instance:
@@ -49,6 +49,10 @@ For instance:
 docker run -it \
        -v /c/Users/example/l3a/:/rapideye/ \
        -v /$(pwd):/data \
-       rapideye-cloud/v2 \
+       rapideye-clouds \
        python main.py /rapideye/
 ```
+
+## Remark
+
+It can be the case that the RAM is not enough for this process, if that is the case, settings in VirtualBox must be changed to something around 8192Mb.
