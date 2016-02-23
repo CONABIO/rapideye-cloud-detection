@@ -43,7 +43,7 @@ docker run -it \
        rapideye-clouds \
        python main.py <path to rapideye directory inside docker>
 ```
-For instance:
+For instance, if our working directory is in "C:\\Users\example\l3a":
 
 ```
 docker run -it \
